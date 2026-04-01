@@ -1,0 +1,6 @@
+node_modules/
+.DS_Store
+*.log
+buddy-legendaries.json
+buddy-reroll.log
+/tmp/
