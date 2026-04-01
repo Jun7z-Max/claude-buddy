@@ -97,8 +97,8 @@ A: Shiny has a 1% chance per roll, on top of legendary's ~1% chance and the spec
 闪光概率 1%，叠加传说级 ~1% 和特定外观组合，大约千万分之一。耐心等待即可。
 
 **Q: Does this work with OAuth login? / OAuth 登录用户能用吗？**
-A: This tool only modifies `userID`. If you're logged in via OAuth, Claude Code uses `oauthAccount.accountUuid` (which takes priority over `userID`) to generate your buddy. In that case, you need to remove the `oauthAccount` section from your config file first, or log in with an API key instead.
-本工具仅修改 `userID`。如果你通过 OAuth 登录，Claude Code 优先使用 `oauthAccount.accountUuid` 生成宠物，此时需先删除配置文件中的 `oauthAccount` 字段，或改用 API key 登录。
+A: No. OAuth users' buddy is determined by `oauthAccount.accountUuid`, which this tool does not modify. This tool only works for API key users whose buddy is derived from `userID`.
+不支持。OAuth 登录用户的宠物由 `oauthAccount.accountUuid` 决定，本工具不会修改该字段。仅支持 API key 用户（宠物由 `userID` 决定）。
 
 **Q: Does this work on Linux? / 支持 Linux 吗？**
 A: Yes, as long as you have Bun installed. Note that on some cloud VMs, Claude Code may need a restart to pick up the config change.
