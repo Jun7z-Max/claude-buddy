@@ -96,6 +96,10 @@ A: Yes. Your old userID is preserved in the saved collection. You can restore an
 A: Shiny has a 1% chance per roll, on top of legendary's ~1% chance and the specific species/eye/hat combo. That's roughly 1 in 10 million. Be patient — it will find one.
 闪光概率 1%，叠加传说级 ~1% 和特定外观组合，大约千万分之一。耐心等待即可。
 
+**Q: Does this work with OAuth login? / OAuth 登录用户能用吗？**
+A: This tool only modifies `userID`. If you're logged in via OAuth, Claude Code uses `oauthAccount.accountUuid` (which takes priority over `userID`) to generate your buddy. In that case, you need to remove the `oauthAccount` section from your config file first, or log in with an API key instead.
+本工具仅修改 `userID`。如果你通过 OAuth 登录，Claude Code 优先使用 `oauthAccount.accountUuid` 生成宠物，此时需先删除配置文件中的 `oauthAccount` 字段，或改用 API key 登录。
+
 **Q: Does this work on Linux? / 支持 Linux 吗？**
 A: Yes, as long as you have Bun installed. Note that on some cloud VMs, Claude Code may need a restart to pick up the config change.
 支持，安装 Bun 即可。部分云服务器可能需要重启 Claude Code 才能生效。

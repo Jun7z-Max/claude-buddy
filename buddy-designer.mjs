@@ -219,7 +219,6 @@ function writeConfig(data) {
     // CC overwrote us — re-read, re-apply, retry
     data = check;
     data.userID = uid;
-    if (data.oauthAccount?.accountUuid) data.oauthAccount.accountUuid = uid;
   }
 }
 
@@ -454,7 +453,6 @@ async function rerollStats(entryIdx) {
       // Apply to config
       const data = JSON.parse(readFileSync(homeJson, "utf8"));
       data.userID = uid;
-      if (data.oauthAccount?.accountUuid) data.oauthAccount.accountUuid = uid;
       data.companion = savedEntries[entryIdx].companion;
       writeConfig(data);
       currentUid = uid;
@@ -510,7 +508,6 @@ function applyAndSave(uid, b) {
   const data = JSON.parse(readFileSync(homeJson, "utf8"));
   const oldUid = data.oauthAccount?.accountUuid || data.userID || "none";
   data.userID = uid;
-  if (data.oauthAccount?.accountUuid) data.oauthAccount.accountUuid = uid;
   data.companion = { name: b.name, personality: `A legendary ${b.species} of few words.`, hatchedAt: Date.now() };
   writeConfig(data);
   // Verify write
@@ -592,7 +589,6 @@ while (true) {
           const e = savedEntries[idx];
           const data = JSON.parse(readFileSync(homeJson, "utf8"));
           data.userID = e.userID;
-          if (data.oauthAccount?.accountUuid) data.oauthAccount.accountUuid = e.userID;
           data.companion = e.companion || { name: e.name, personality: `A legendary ${e.species} of few words.`, hatchedAt: Date.now() };
           writeConfig(data);
           currentUid = e.userID;
