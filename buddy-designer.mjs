@@ -242,8 +242,8 @@ let savedEntries = [];
 let currentUid = "";
 let renameBuffer = ""; // Buffer for rename input
 const SHINY_OPTS = ["off", "on"];
-// Stat targeting: 0=none, 1=up, 2=down (per stat index 0-4)
-let statTargets = [0, 0, 0, 0, 0];
+// Stat reroll target: -1=total, 0-4=specific stat index
+let selStat = -1;
 // Same idle sequence as Claude Code
 const IDLE_SEQUENCE = [0, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0, 2, 0, 0, 0];
 
@@ -285,7 +285,6 @@ process.stdin.on("data", (data) => {
   else if (data[0] === "d" || data[0] === "x") keyQueue.push("delete");
   else if (data[0] === "r") keyQueue.push("reroll");
   else if (data[0] === "n") keyQueue.push("rename");
-  else if (data[0] >= "1" && data[0] <= "5") keyQueue.push("stat" + data[0]);
 });
 
 function pollKey() {
@@ -314,7 +313,12 @@ function draw() {
 
   // Title
   mv(1, 1); w(`${GD}${BD}  ✦ Claude Code Buddy Designer ✦${X}`);
-  mv(2, 1); w(`${DM}  ↑↓ 选择 · ←→ 切换 · Enter 应用 · r 刷属性 · 1-5 定向↑↓ · n 改名 · d 删除 · q 退出${X}`);
+  // Help box
+  mv(2, 1); w(`${DM}  ┌─────────────────────────────────────────────────────────────┐${X}`);
+  mv(3, 1); w(`${DM}  │ ↑↓ 上下选择字段    ←→ 切换选项（外观/刷新目标属性）      │${X}`);
+  mv(4, 1); w(`${DM}  │ Enter 应用当前设计  r  刷新属性（仅已保存，只升不降）      │${X}`);
+  mv(5, 1); w(`${DM}  │ n  给宠物改名       d  删除已保存条目    q 退出            │${X}`);
+  mv(6, 1); w(`${DM}  └─────────────────────────────────────────────────────────────┘${X}`);
 
   // Left panel — attribute selectors
   const fields = [
@@ -324,7 +328,7 @@ function draw() {
     { label: "SHINY", val: SHINY_OPTS[selShiny] },
   ];
   for (let i = 0; i < fields.length; i++) {
-    const row = 4 + i;
+    const row = 8 + i;
     const f = fields[i];
     const active = selField === i;
     mv(row, 1);
@@ -336,7 +340,7 @@ function draw() {
   }
 
   // Start button
-  const btnRow = 9;
+  const btnRow = 13;
   mv(btnRow, 1);
   if (mode === "design") {
     const active = selField === 4;
@@ -374,27 +378,27 @@ function draw() {
 
   // Right panel — clear entire right area first (prevent ghost content)
   const CLEAR_W = "                                            ";
-  for (let r = 4; r <= 22; r++) { mv(r, RIGHT_C); w(CLEAR_W); }
+  for (let r = 8; r <= 26; r++) { mv(r, RIGHT_C); w(CLEAR_W); }
 
   // Right panel — all content indented to center
   const RC = RIGHT_C + 4; // base indent for right panel content
 
   // Species title
   const shinyLabel = selShiny ? ` ✨` : "";
-  mv(4, RC); w(`${GD}${BD}${previewSp.toUpperCase()} // legendary ★★★★★${shinyLabel}${X}`);
-  mv(5, RC); w(`${DM}${"─".repeat(28)}${X}`);
+  mv(8, RC); w(`${GD}${BD}${previewSp.toUpperCase()} // legendary ★★★★★${shinyLabel}${X}`);
+  mv(9, RC); w(`${DM}${"─".repeat(28)}${X}`);
 
-  // Sprite — fixed 5 rows (row 6-10), extra indent to center the ASCII art
+  // Sprite — fixed 5 rows (row 10-14), extra indent to center the ASCII art
   const SPRITE_INDENT = RC + 4;
   for (let i = 0; i < 5; i++) {
-    mv(6 + i, SPRITE_INDENT);
+    mv(10 + i, SPRITE_INDENT);
     if (i < sprite.length) {
       w(`${GD}${sprite[i]}${X}`);
     }
   }
 
   // Fixed positions below sprite
-  const INFO_ROW = 12;
+  const INFO_ROW = 16;
   mv(INFO_ROW, RC); w(`${DM}${"─".repeat(28)}${X}`);
   mv(INFO_ROW + 1, RC); w(`${DM}eye${X}  ${BD}${previewEye}${X}    ${DM}hat${X}  ${BD}${previewHat}${X}    ${DM}shiny${X}  ${BD}${SHINY_OPTS[selShiny]}${X}`);
 
@@ -422,21 +426,26 @@ function draw() {
         if (d > 0) diff = ` \x1b[32m↑${d}${X}`;
         else if (d < 0) diff = ` \x1b[31m↓${Math.abs(d)}${X}`;
       }
-      // Show stat target indicator
-      const tgt = statTargets[i] === 1 ? `${GN}↑${X}` : statTargets[i] === 2 ? `\x1b[31m↓${X}` : `${DM}${i+1}${X}`;
-      mv(INFO_ROW + 4 + i, RC); w(`${tgt} ${DM}${n.padEnd(10)}${X} ${bar} ${v}${diff}`);
+      // Show reroll target indicator: ▸ on selected stat
+      const isTarget = selField >= 5 && selStat === i;
+      const marker = isTarget ? `${GD}▸${X}` : " ";
+      mv(INFO_ROW + 4 + i, RC); w(`${marker}${DM}${n.padEnd(10)}${X} ${bar} ${v}${diff}`);
+    }
+    // Show reroll target hint below stats
+    if (selField >= 5) {
+      const targetLabel = selStat === -1 ? "总值" : STAT_NAMES[selStat];
+      mv(INFO_ROW + 10, RC); w(`${DM}刷新目标: ${X}${GD}${targetLabel}${X}${DM}  (←→切换)${X}`);
     }
   }
 }
 
 // ── Apply: find matching userID (async, interruptible) ──
-// ── Reroll stats: respect stat targets (↑/↓) or fall back to higher total ──
+// ── Reroll stats: target selStat or higher total ──
 async function rerollStats(entryIdx) {
   const entry = savedEntries[entryIdx];
   const ts = entry.species, te = entry.eye, th = entry.hat;
   const oldStats = entry.stats || {};
   const oldTotal = Object.values(oldStats).reduce((a,b)=>a+b,0);
-  const hasTargets = statTargets.some(t => t !== 0);
   mode = "searching";
   const BATCH = 50000;
 
@@ -458,18 +467,11 @@ async function rerollStats(entryIdx) {
       if (entry.shiny && !shiny) continue;
       const stats = rollStats(rng, rarity);
 
-      // Check constraints
-      if (hasTargets) {
-        // Targeted mode: each stat must satisfy its target direction
-        let ok = true;
-        for (let si = 0; si < STAT_NAMES.length; si++) {
-          const n = STAT_NAMES[si];
-          if (statTargets[si] === 1 && stats[n] <= (oldStats[n] || 0)) { ok = false; break; }
-          if (statTargets[si] === 2 && stats[n] >= (oldStats[n] || 0)) { ok = false; break; }
-        }
-        if (!ok) continue;
+      // Check constraint: specific stat or total
+      if (selStat >= 0) {
+        const targetName = STAT_NAMES[selStat];
+        if (stats[targetName] <= (oldStats[targetName] || 0)) continue;
       } else {
-        // Default: require higher total
         const newTotal = Object.values(stats).reduce((a,b)=>a+b,0);
         if (newTotal <= oldTotal) continue;
       }
@@ -638,11 +640,13 @@ while (true) {
       else if (selField === 1) selEye = (selEye - 1 + EYES.length) % EYES.length;
       else if (selField === 2) selHat = (selHat - 1 + HATS.length) % HATS.length;
       else if (selField === 3) selShiny = (selShiny + 1) % 2;
+      else if (selField >= 5) selStat = selStat <= -1 ? 4 : selStat - 1;
     } else if (key === "right") {
       if (selField === 0) selSpecies = (selSpecies + 1) % SPECIES.length;
       else if (selField === 1) selEye = (selEye + 1) % EYES.length;
       else if (selField === 2) selHat = (selHat + 1) % HATS.length;
       else if (selField === 3) selShiny = (selShiny + 1) % 2;
+      else if (selField >= 5) selStat = selStat >= 4 ? -1 : selStat + 1;
     } else if (key === "enter") {
       if (selField === 4) {
         await applyDesign();
@@ -681,10 +685,6 @@ while (true) {
           continue;
         }
       }
-    } else if (key.startsWith("stat")) {
-      // Toggle stat target: none → ↑ → ↓ → none
-      const si = parseInt(key[4]) - 1;
-      statTargets[si] = (statTargets[si] + 1) % 3;
     } else if (key === "rename") {
       if (selField >= 5 && selField - 5 < savedEntries.length) {
         renameBuffer = savedEntries[selField - 5].name || "";
@@ -703,9 +703,6 @@ while (true) {
         await rerollStats(selField - 5);
         continue;
       }
-    } else if (key.startsWith("stat")) {
-      const si = parseInt(key[4]) - 1;
-      statTargets[si] = (statTargets[si] + 1) % 3;
     } else if (key === "rename") {
       if (selField >= 5 && selField - 5 < savedEntries.length) {
         renameBuffer = savedEntries[selField - 5].name || "";
