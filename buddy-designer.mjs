@@ -648,8 +648,8 @@ while (true) {
 
   if (mode === "design") {
     const maxField = 4 + savedEntries.length; // 0-3=attrs, 4=start, 5+=saved
-    if (key === "up") selField = Math.max(0, selField - 1);
-    else if (key === "down") selField = Math.min(maxField, selField + 1);
+    if (key === "up") { selField = Math.max(0, selField - 1); prevStats = null; }
+    else if (key === "down") { selField = Math.min(maxField, selField + 1); prevStats = null; }
     else if (key === "left") {
       if (selField === 0) selSpecies = (selSpecies - 1 + SPECIES.length) % SPECIES.length;
       else if (selField === 1) selEye = (selEye - 1 + EYES.length) % EYES.length;
