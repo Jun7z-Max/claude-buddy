@@ -284,6 +284,7 @@ process.stdin.on("data", (data) => {
   else if (data[0] === "q" || data[0] === "\x03") keyQueue.push("quit");
   else if (data[0] === "d" || data[0] === "x") keyQueue.push("delete");
   else if (data[0] === "r") keyQueue.push("reroll");
+  else if (data[0] === "f") keyQueue.push("reroll_down");
   else if (data[0] === "n") keyQueue.push("rename");
 });
 
@@ -319,10 +320,11 @@ function draw() {
   mv(3, HK); w(`${GD}↑↓${X}`);    mv(3, HD); w(`${DM}上下选择字段${X}`);
   mv(3, HK2); w(`${GD}←→${X}`);   mv(3, HD2); w(`${DM}切换选项/刷新目标属性${X}`);
   mv(4, HK); w(`${GD}Enter${X}`); mv(4, HD); w(`${DM}应用设计/恢复已保存宠物${X}`);
-  mv(4, HK2); w(`${GD}r${X}`);    mv(4, HD2); w(`${DM}刷新属性（只升不降）${X}`);
-  mv(5, HK); w(`${GD}n${X}`);     mv(5, HD); w(`${DM}给宠物改名${X}`);
-  mv(5, HK2); w(`${GD}d${X}`);    mv(5, HD2); w(`${DM}删除已保存条目${X}`);
-  mv(6, HK); w(`${GD}q${X}`);     mv(6, HD); w(`${DM}退出${X}`);
+  mv(4, HK2); w(`${GD}n${X}`);    mv(4, HD2); w(`${DM}给宠物改名${X}`);
+  mv(5, HK); w(`${GD}r${X}`);     mv(5, HD); w(`${DM}刷新属性↑（目标更高）${X}`);
+  mv(5, HK2); w(`${GD}f${X}`);    mv(5, HD2); w(`${DM}刷新属性↓（目标更低）${X}`);
+  mv(6, HK); w(`${GD}d${X}`);     mv(6, HD); w(`${DM}删除已保存条目${X}`);
+  mv(6, HK2); w(`${GD}q${X}`);    mv(6, HD2); w(`${DM}退出${X}`);
   mv(7, 1); w(`${DM}  ──────────────────────────────────────────────────────────────${X}`);
 
   // Left panel — attribute selectors
@@ -439,14 +441,14 @@ function draw() {
     // Show reroll target hint below stats
     if (selField >= 5) {
       const targetLabel = selStat === -1 ? "总值" : STAT_NAMES[selStat];
-      mv(INFO_ROW + 10, RC); w(`${DM}刷新目标: ${X}${GD}${targetLabel}${X}${DM}  (←→切换)${X}`);
+      mv(INFO_ROW + 10, RC); w(`${DM}刷新目标: ${X}${GD}${targetLabel}${X}${DM}  ←→切换  r↑刷高  f↓刷低${X}`);
     }
   }
 }
 
 // ── Apply: find matching userID (async, interruptible) ──
-// ── Reroll stats: target selStat or higher total ──
-async function rerollStats(entryIdx) {
+// ── Reroll stats: direction = "up" or "down" ──
+async function rerollStats(entryIdx, direction) {
   const entry = savedEntries[entryIdx];
   const ts = entry.species, te = entry.eye, th = entry.hat;
   const oldStats = entry.stats || {};
@@ -472,13 +474,17 @@ async function rerollStats(entryIdx) {
       if (entry.shiny && !shiny) continue;
       const stats = rollStats(rng, rarity);
 
-      // Check constraint: specific stat or total
+      // Check constraint based on target and direction
       if (selStat >= 0) {
         const targetName = STAT_NAMES[selStat];
-        if (stats[targetName] <= (oldStats[targetName] || 0)) continue;
+        const oldVal = oldStats[targetName] || 0;
+        if (direction === "up" && stats[targetName] <= oldVal) continue;
+        if (direction === "down" && stats[targetName] >= oldVal) continue;
       } else {
+        // Free reroll on total
         const newTotal = Object.values(stats).reduce((a,b)=>a+b,0);
-        if (newTotal <= oldTotal) continue;
+        if (direction === "up" && newTotal <= oldTotal) continue;
+        if (direction === "down" && newTotal >= oldTotal) continue;
       }
 
       // Found higher stats — save old for diff display
@@ -682,11 +688,11 @@ while (true) {
           clr();
         }
       }
-    } else if (key === "reroll") {
+    } else if (key === "reroll" || key === "reroll_down") {
       if (selField >= 5) {
         const idx = selField - 5;
         if (idx < savedEntries.length) {
-          await rerollStats(idx);
+          await rerollStats(idx, key === "reroll" ? "up" : "down");
           continue;
         }
       }
@@ -701,11 +707,11 @@ while (true) {
     if (key === "up") { selField = Math.max(0, selField - 1); mode = "design"; foundBuddy = null; }
     else if (key === "down") { selField = Math.min(maxField, selField + 1); mode = "design"; foundBuddy = null; }
     else if (key === "enter") { mode = "design"; foundBuddy = null; }
-    else if (key === "reroll") {
+    else if (key === "reroll" || key === "reroll_down") {
       // Reroll from found state — find which saved entry is selected
       if (selField >= 5 && selField - 5 < savedEntries.length) {
         mode = "design"; foundBuddy = null;
-        await rerollStats(selField - 5);
+        await rerollStats(selField - 5, key === "reroll" ? "up" : "down");
         continue;
       }
     } else if (key === "rename") {
