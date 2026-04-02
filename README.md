@@ -10,11 +10,11 @@ Pick your species, eyes, hat, and shiny — then apply instantly. No more random
 >
 > **Requires:** Claude Code **v2.1.89** or later. Run `/buddy` in Claude Code at least once before using this tool.
 
-![demo](assets/demo.png)
+![designer](assets/designer.png)
 
 After applying, restart Claude Code and run `/buddy` to see the result:
 
-![buddy-card](assets/buddy-card.png)
+![buddy-result](assets/buddy-result.png)
 
 ## Features
 

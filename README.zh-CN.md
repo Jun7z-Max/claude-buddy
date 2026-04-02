@@ -8,11 +8,11 @@
 >
 > **要求：** Claude Code **v2.1.89** 及以上版本。使用本工具前，请先在 Claude Code 中执行一次 `/buddy`。
 
-![demo](assets/demo.png)
+![designer](assets/designer.png)
 
 应用后，重启 Claude Code 并执行 `/buddy` 查看效果：
 
-![buddy-card](assets/buddy-card.png)
+![buddy-result](assets/buddy-result.png)
 
 ## 功能
 
