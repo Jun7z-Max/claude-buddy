@@ -241,6 +241,8 @@ let foundBuddy = null, foundUid = null, prevStats = null;
 let savedEntries = [];
 let currentUid = "";
 const SHINY_OPTS = ["off", "on"];
+// Stat targeting: 0=none, 1=up, 2=down (per stat index 0-4)
+let statTargets = [0, 0, 0, 0, 0];
 // Same idle sequence as Claude Code
 const IDLE_SEQUENCE = [0, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0, 2, 0, 0, 0];
 
@@ -273,6 +275,7 @@ process.stdin.on("data", (data) => {
   else if (data[0] === "q" || data[0] === "\x03") keyQueue.push("quit");
   else if (data[0] === "d" || data[0] === "x") keyQueue.push("delete");
   else if (data[0] === "r") keyQueue.push("reroll");
+  else if (data[0] >= "1" && data[0] <= "5") keyQueue.push("stat" + data[0]);
 });
 
 function pollKey() {
@@ -301,7 +304,7 @@ function draw() {
 
   // Title
   mv(1, 1); w(`${GD}${BD}  ✦ Claude Code Buddy Designer ✦${X}`);
-  mv(2, 1); w(`${DM}  ↑↓ 选择 · ←→ 切换 · Enter 应用 · r 刷属性 · d 删除 · q 退出${X}`);
+  mv(2, 1); w(`${DM}  ↑↓ 选择 · ←→ 切换 · Enter 应用 · r 刷属性 · 1-5 定向↑↓ · d 删除 · q 退出${X}`);
 
   // Left panel — attribute selectors
   const fields = [
@@ -404,17 +407,21 @@ function draw() {
         if (d > 0) diff = ` \x1b[32m↑${d}${X}`;
         else if (d < 0) diff = ` \x1b[31m↓${Math.abs(d)}${X}`;
       }
-      mv(INFO_ROW + 4 + i, RC); w(`${DM}${n.padEnd(10)}${X} ${bar} ${v}${diff}`);
+      // Show stat target indicator
+      const tgt = statTargets[i] === 1 ? `${GN}↑${X}` : statTargets[i] === 2 ? `\x1b[31m↓${X}` : `${DM}${i+1}${X}`;
+      mv(INFO_ROW + 4 + i, RC); w(`${tgt} ${DM}${n.padEnd(10)}${X} ${bar} ${v}${diff}`);
     }
   }
 }
 
 // ── Apply: find matching userID (async, interruptible) ──
-// ── Reroll stats: keep same species/eye/hat, find higher total ──
+// ── Reroll stats: respect stat targets (↑/↓) or fall back to higher total ──
 async function rerollStats(entryIdx) {
   const entry = savedEntries[entryIdx];
   const ts = entry.species, te = entry.eye, th = entry.hat;
-  const oldTotal = entry.stats ? Object.values(entry.stats).reduce((a,b)=>a+b,0) : 0;
+  const oldStats = entry.stats || {};
+  const oldTotal = Object.values(oldStats).reduce((a,b)=>a+b,0);
+  const hasTargets = statTargets.some(t => t !== 0);
   mode = "searching";
   const BATCH = 50000;
 
@@ -435,8 +442,22 @@ async function rerollStats(entryIdx) {
       // Preserve shiny status: if original was shiny, only accept shiny results
       if (entry.shiny && !shiny) continue;
       const stats = rollStats(rng, rarity);
-      const newTotal = Object.values(stats).reduce((a,b)=>a+b,0);
-      if (newTotal <= oldTotal) continue;
+
+      // Check constraints
+      if (hasTargets) {
+        // Targeted mode: each stat must satisfy its target direction
+        let ok = true;
+        for (let si = 0; si < STAT_NAMES.length; si++) {
+          const n = STAT_NAMES[si];
+          if (statTargets[si] === 1 && stats[n] <= (oldStats[n] || 0)) { ok = false; break; }
+          if (statTargets[si] === 2 && stats[n] >= (oldStats[n] || 0)) { ok = false; break; }
+        }
+        if (!ok) continue;
+      } else {
+        // Default: require higher total
+        const newTotal = Object.values(stats).reduce((a,b)=>a+b,0);
+        if (newTotal <= oldTotal) continue;
+      }
 
       // Found higher stats — save old for diff display
       prevStats = entry.stats ? {...entry.stats} : null;
@@ -616,6 +637,10 @@ while (true) {
           continue;
         }
       }
+    } else if (key.startsWith("stat")) {
+      // Toggle stat target: none → ↑ → ↓ → none
+      const si = parseInt(key[4]) - 1;
+      statTargets[si] = (statTargets[si] + 1) % 3;
     }
   } else if (mode === "found") {
     const maxField = 4 + savedEntries.length;
@@ -629,6 +654,9 @@ while (true) {
         await rerollStats(selField - 5);
         continue;
       }
+    } else if (key.startsWith("stat")) {
+      const si = parseInt(key[4]) - 1;
+      statTargets[si] = (statTargets[si] + 1) % 3;
     }
   }
 
