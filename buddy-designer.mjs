@@ -273,7 +273,7 @@ process.stdin.on("data", (data) => {
     if (data[0] === "\r" || data[0] === "\n") keyQueue.push("rename_confirm");
     else if (data[0] === "\x1b" || data[0] === "\x03") keyQueue.push("rename_cancel");
     else if (data[0] === "\x7f" || data[0] === "\b") keyQueue.push("rename_backspace");
-    else if (data[0] >= " " && data.length === 1) keyQueue.push("rename_char:" + data[0]);
+    else if (data.charCodeAt(0) >= 32 && !data.startsWith("\x1b[")) keyQueue.push("rename_char:" + data);
     return;
   }
   if (data.startsWith("\x1b[A")) keyQueue.push("up");
@@ -623,7 +623,8 @@ while (true) {
     } else if (key === "rename_backspace") {
       renameBuffer = renameBuffer.slice(0, -1);
     } else if (key.startsWith("rename_char:")) {
-      if (renameBuffer.length < 20) renameBuffer += key.slice(12);
+      const ch = key.slice(12);
+      if (renameBuffer.length + ch.length <= 20) renameBuffer += ch;
     }
     draw(); continue;
   }
