@@ -477,13 +477,19 @@ async function rerollStats(entryIdx) {
 
       // Check all stat constraints from rerollDirs
       let ok = true;
+      let anyImproved = false;
       for (let si = 0; si < STAT_NAMES.length; si++) {
         const n = STAT_NAMES[si];
         const oldVal = oldStats[n] || 0;
-        if (rerollDirs[si] === 1 && stats[n] <= oldVal) { ok = false; break; }
-        if (rerollDirs[si] === -1 && stats[n] >= oldVal) { ok = false; break; }
+        if (rerollDirs[si] === 1) {
+          if (stats[n] < oldVal) { ok = false; break; } // must not decrease
+          if (stats[n] > oldVal) anyImproved = true;
+        } else {
+          if (stats[n] > oldVal) { ok = false; break; } // must not increase
+          if (stats[n] < oldVal) anyImproved = true;
+        }
       }
-      if (!ok) continue;
+      if (!ok || !anyImproved) continue;
 
       // Found higher stats — save old for diff display
       prevStats = entry.stats ? {...entry.stats} : null;
