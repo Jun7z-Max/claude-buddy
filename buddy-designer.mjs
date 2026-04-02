@@ -384,8 +384,8 @@ function draw() {
   }
 
   // Right panel — clear entire right area first (prevent ghost content)
-  const CLEAR_W = "                                            ";
-  for (let r = 8; r <= 27; r++) { mv(r, RIGHT_C); w(CLEAR_W); }
+  const CLEAR_W = "                                                                ";
+  for (let r = 8; r <= 35; r++) { mv(r, RIGHT_C); w(CLEAR_W); }
 
   // Right panel — all content indented to center
   const RC = RIGHT_C + 4; // base indent for right panel content
