@@ -6,7 +6,7 @@
 import { readFileSync, writeFileSync, existsSync, utimesSync, unlinkSync, realpathSync } from "fs";
 import { join, dirname } from "path";
 import { execSync } from "child_process";
-import { createHash, randomBytes } from "crypto";
+import { randomBytes } from "crypto";
 import { fileURLToPath } from "url";
 
 // Requires bun
@@ -202,7 +202,8 @@ function rollBuddy(uid) {
   return { rarity, species, eye, hat, shiny, stats, name: FALLBACK_NAMES[nameIdx] };
 }
 function genUserId() {
-  return createHash("sha256").update(randomBytes(32)).digest("hex");
+  // Fast random hex — no need for crypto-grade randomness, just needs to be unique
+  return randomBytes(32).toString("hex");
 }
 // Write config with retry — CC might overwrite our change, so verify and retry
 function writeConfig(data) {
@@ -455,7 +456,7 @@ async function rerollStats(entryIdx) {
   const ts = entry.species, te = entry.eye, th = entry.hat;
   const oldStats = entry.stats || {};
   mode = "searching";
-  const BATCH = 50000;
+  const BATCH = 200000;
 
   while (mode === "searching") {
     for (let i = 0; i < BATCH; i++) {
@@ -524,7 +525,7 @@ async function applyDesign() {
   const ts = SPECIES[selSpecies], te = EYES[selEye], th = HATS[selHat];
   const wantShiny = selShiny === 1;
   mode = "searching";
-  const BATCH = 50000;
+  const BATCH = 200000;
 
   while (mode === "searching") {
     for (let i = 0; i < BATCH; i++) {
